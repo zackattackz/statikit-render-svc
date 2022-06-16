@@ -2,7 +2,6 @@ package service
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"text/template"
 )
@@ -61,5 +60,3 @@ func (rs renderService) Render(contents string, schema Schema, w io.Writer) erro
 	rs.cache.Set(k, string(res))
 	return nil
 }
-
-var ErrNoDefaultValues = fmt.Errorf("no default values defined")
