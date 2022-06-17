@@ -2,6 +2,7 @@ package service
 
 import (
 	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 )
 
@@ -19,5 +20,5 @@ type CacheKey struct {
 
 func (k CacheKey) Hash() string {
 	sum := sha256.Sum256([]byte(fmt.Sprintf("%v", k.Schema) + k.Contents))
-	return string(sum[:])
+	return base64.StdEncoding.EncodeToString(sum[:])
 }
