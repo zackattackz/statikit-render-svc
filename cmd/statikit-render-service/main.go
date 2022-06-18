@@ -6,18 +6,19 @@ import (
 	"os"
 	"time"
 
+	"github.com/go-kit/kit/circuitbreaker"
 	"github.com/go-kit/log"
 	"github.com/go-redis/redis/v8"
+	"github.com/sony/gobreaker"
 	"github.com/zackattackz/statikit-render-svc/internal/adapters/cache"
 	"github.com/zackattackz/statikit-render-svc/internal/middleware"
 	"github.com/zackattackz/statikit-render-svc/internal/models"
-	"github.com/zackattackz/statikit-render-svc/internal/ports"
 	"github.com/zackattackz/statikit-render-svc/internal/service"
 )
 
 type deps struct {
 	logger log.Logger
-	cache  ports.Cache
+	cache  service.CacheService
 	svc    service.RenderService
 }
 
@@ -52,13 +53,16 @@ func main() {
 		DB:       0,  // use default DB
 	}).WithContext(ctx)
 
-	cache := cache.NewRedisCache(redisClient, time.Hour*24)
+	cacheSvc := cache.NewRedisCacheService(redisClient, time.Hour*24)
+	cacheEndpoint := service.EndPointFromCacheService(cacheSvc)
+	cacheEndpoint = circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{}))(cacheEndpoint)
+	cacheSvc = service.CacheServiceFromEndpoint(context.Background(), cacheEndpoint)
 
 	var svc service.RenderService
-	svc = service.New(cache)
+	svc = service.NewRenderService(cacheSvc)
 	svc = middleware.LoggingMW(logger)(svc)
 
-	err := svc.Render("Hello {{.Data.Name}}!", models.Schema{Data: map[string]any{"Name": "Joe"}}, os.Stdout)
+	err := svc.Render("Hello {{.Data.Wut}}!", models.Schema{Data: map[string]any{"Name": "Joe"}}, os.Stdout)
 	if err != nil {
 		logger.Log(err)
 	}

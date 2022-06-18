@@ -6,7 +6,6 @@ import (
 	"io"
 
 	"github.com/zackattackz/statikit-render-svc/internal/models"
-	"github.com/zackattackz/statikit-render-svc/internal/ports"
 )
 
 type RenderService interface {
@@ -17,15 +16,15 @@ type RenderService interface {
 }
 
 // Chainable behavior modifier for RenderService.
-type Middleware func(RenderService) RenderService
+type RenderServiceMiddleware func(RenderService) RenderService
 
 // Default implementation of RenderService
 type renderService struct {
-	cache ports.Cache
+	cache CacheService
 }
 
 // Returns default implementation of a RenderService, using a cache.
-func New(cache ports.Cache) RenderService {
+func NewRenderService(cache CacheService) RenderService {
 	return renderService{
 		cache,
 	}
@@ -37,7 +36,7 @@ func New(cache ports.Cache) RenderService {
 func (rs renderService) Render(contents string, schema models.Schema, w io.Writer) error {
 	// First check the cache for a result,
 	// return it if it exists
-	k := ports.CacheKey{Schema: schema, Contents: contents}
+	k := CacheKey{Schema: schema, Contents: contents}
 	if res, err := rs.cache.Get(k); err == nil {
 		_, err = w.Write([]byte(res))
 		return err
@@ -46,7 +45,7 @@ func (rs renderService) Render(contents string, schema models.Schema, w io.Write
 	// Render the template with the given contents/schema
 
 	// Create the template with given contents
-	t, err := template.New("input").Parse(contents)
+	t, err := template.New("input").Option("missingkey=error").Parse(contents)
 	if err != nil {
 		return err
 	}
