@@ -13,11 +13,11 @@ import (
 )
 
 type cache struct {
-	client redisSdk.Client
+	client *redisSdk.Client
 	ttl    time.Duration
 }
 
-func New(client redisSdk.Client, ttl time.Duration) cache {
+func New(client *redisSdk.Client, ttl time.Duration) cache {
 	return cache{client, ttl}
 }
 
