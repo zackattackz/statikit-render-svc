@@ -1,55 +1,50 @@
-package redis
+package cache
 
 import (
 	"context"
 	"time"
 
 	"github.com/sony/gobreaker"
+	"github.com/zackattackz/statikit-render-svc/internal/ports"
 
 	"github.com/go-kit/kit/circuitbreaker"
 	"github.com/go-kit/kit/endpoint"
-	redisSdk "github.com/go-redis/redis/v8"
-	"github.com/zackattackz/statikit-render-svc/internal/service"
+	"github.com/go-redis/redis/v8"
 )
 
-type cache struct {
-	client *redisSdk.Client
+// Implementation of ports.Cache for redis
+type redisCache struct {
+	client *redis.Client
 	ttl    time.Duration
 }
 
-func New(client *redisSdk.Client, ttl time.Duration) cache {
-	return cache{client, ttl}
+func NewRedisCache(client *redis.Client, ttl time.Duration) ports.Cache {
+	return redisCache{client, ttl}
 }
 
-func (c cache) Get(k service.CacheKey) (string, error) {
+func (c redisCache) Get(k ports.CacheKey) (string, error) {
 	e := c.makeGetEndpoint()
 	e = circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{}))(e)
 	resp, err := e(c.client.Context(), k)
 	return resp.(string), err
 }
 
-// Combines a key and value
-type kvPair struct {
-	k service.CacheKey
-	v string
-}
-
-func (c cache) Set(k service.CacheKey, v string) error {
+func (c redisCache) Set(k ports.CacheKey, v string) error {
 	e := c.makeSetEndpoint()
 	e = circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{}))(e)
 	_, err := e(c.client.Context(), kvPair{k, v})
 	return err
 }
 
-func (c cache) makeGetEndpoint() endpoint.Endpoint {
+func (c redisCache) makeGetEndpoint() endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		k := request.(service.CacheKey)
+		k := request.(ports.CacheKey)
 		resp := c.client.Get(c.client.Context(), k.Hash())
 		return resp.Result()
 	}
 }
 
-func (c cache) makeSetEndpoint() endpoint.Endpoint {
+func (c redisCache) makeSetEndpoint() endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		kvPair := request.(kvPair)
 		resp := c.client.Set(c.client.Context(), kvPair.k.Hash(), kvPair.v, c.ttl)

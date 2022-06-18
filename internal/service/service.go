@@ -2,33 +2,42 @@ package service
 
 import (
 	"bytes"
+	"html/template"
 	"io"
-	"text/template"
+
+	"github.com/zackattackz/statikit-render-svc/internal/models"
+	"github.com/zackattackz/statikit-render-svc/internal/ports"
 )
 
 type RenderService interface {
-	Render(string, Schema, io.Writer) error
+	// Uses html/template to render the input context with the given schema, writes result to input writer
+	//
+	// Returns error != nil if failed
+	Render(string, models.Schema, io.Writer) error
 }
 
-// Chainable behavior modifier for Renderer.
+// Chainable behavior modifier for RenderService.
 type Middleware func(RenderService) RenderService
 
-// Implementation of RenderService
+// Default implementation of RenderService
 type renderService struct {
-	cache Cache
+	cache ports.Cache
 }
 
-// Used to inject dependencies into a render service
-func New(cache Cache) renderService {
+// Returns default implementation of a RenderService, using a cache.
+func New(cache ports.Cache) RenderService {
 	return renderService{
 		cache,
 	}
 }
 
-func (rs renderService) Render(contents string, schema Schema, w io.Writer) error {
+// Uses html/template to render the input context with the given schema, writes result to input writer
+//
+// Returns error != nil if failed
+func (rs renderService) Render(contents string, schema models.Schema, w io.Writer) error {
 	// First check the cache for a result,
 	// return it if it exists
-	k := CacheKey{schema, contents}
+	k := ports.CacheKey{Schema: schema, Contents: contents}
 	if res, err := rs.cache.Get(k); err == nil {
 		_, err = w.Write([]byte(res))
 		return err

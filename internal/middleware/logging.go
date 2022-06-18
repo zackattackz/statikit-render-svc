@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/zackattackz/statikit-render-svc/internal/models"
+	"github.com/zackattackz/statikit-render-svc/internal/ports"
 	"github.com/zackattackz/statikit-render-svc/internal/service"
 )
 
@@ -19,9 +21,9 @@ type logMW struct {
 	service.RenderService
 }
 
-func (mw logMW) Render(contents string, schema service.Schema, w io.Writer) error {
+func (mw logMW) Render(contents string, schema models.Schema, w io.Writer) error {
 	var err error
-	k := service.CacheKey{Schema: schema, Contents: contents}
+	k := ports.CacheKey{Schema: schema, Contents: contents}
 	defer func(begin time.Time) {
 		_ = mw.logger.Log(
 			"method", "render",
